@@ -1,0 +1,481 @@
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { getSession } from "next-auth/react";
+import styled from "@emotion/styled";
+import {
+  Button,
+  Pagination,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  CircularProgress,
+  Backdrop,
+  MenuItem,
+  Select
+} from "@mui/material";
+import { RemoveRedEye } from "@mui/icons-material";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import DashboardLayout from "@/components/common/Layout";
+import PageTitle from "@/components/common/PageTitle";
+import InnerContent from "@/components/presentation/InnerContent";
+import MuiIconButton from "@/components/presentation/MuiIconButton";
+import ThemeProvider from "@/theme/ThemeProvider";
+import { formatDate, getConfig } from "@/utils/helpers";
+import { Store } from "@/utils/store";
+import { withAuth } from "@/utils/withAuth";
+import {
+  getPractitionerClassesList,
+  updateClassApprovalStatus
+} from "@/utils/api/class-management";
+
+export default function ListClass({ classList, settings }) {
+  const store = Store();
+  const PER_PAGE = getConfig(settings, "ADMIN_PAGE_LIMIT");
+  const [classLists, setClassLists] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentList, setCurrentList] = useState([]);
+  const [searchKeywords, setSearchKeywords] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (classList?.status) {
+      handleClassData(classList.data);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClassData = data => {
+    const pageNumber = 1;
+    const allClasses = Array.isArray(data) ? data : [];
+    const moreLists = allClasses.slice(
+      (pageNumber - 1) * PER_PAGE,
+      pageNumber * PER_PAGE
+    );
+    setCurrentPage(pageNumber);
+    setCurrentList(moreLists);
+    setClassLists(allClasses);
+  };
+
+  const handlePageChange = (event, page) => {
+    event.preventDefault();
+    const pageNumber = page;
+    const moreLists = classLists.slice(
+      (pageNumber - 1) * PER_PAGE,
+      pageNumber * PER_PAGE
+    );
+    setCurrentPage(pageNumber);
+    setCurrentList(moreLists);
+  };
+
+  const handleSearch = () => {
+    setLoading(true);
+    let filtered = classLists;
+    if (searchKeywords) {
+      filtered = classLists.filter(cls => {
+        const keyword = searchKeywords.toLowerCase();
+        const titleMatch =
+          cls.title && cls.title.toLowerCase().includes(keyword);
+        const modalityMatch =
+          cls.classModalities &&
+          cls.classModalities
+            .map(m => m.modality?.name?.toLowerCase())
+            .join(", ")
+            .includes(keyword);
+        const locationMatch =
+          cls.location && cls.location.toLowerCase().includes(keyword);
+        return titleMatch || modalityMatch || locationMatch;
+      });
+    }
+    setCurrentPage(1);
+    setCurrentList(filtered.slice(0, PER_PAGE));
+    setLoading(false);
+  };
+
+  const handleReset = () => {
+    setLoading(true);
+    setSearchKeywords("");
+    setCurrentPage(1);
+    setCurrentList(classLists.slice(0, PER_PAGE));
+    setLoading(false);
+  };
+
+  const handleView = id => {
+    router.push({
+      pathname: "/admin/class-management/view-class",
+      query: { id: id }
+    });
+  };
+
+  const updateApprovalAction = async (status, classId) => {
+    try {
+      setLoading(true);
+      const response = await updateClassApprovalStatus({
+        classId: classId,
+        approvalStatus: status
+      });
+
+      if (response.status) {
+        const updatedClass = response.data;
+
+        const updatedList = classLists.map(cls =>
+          cls.id === updatedClass.id ? { ...cls, ...updatedClass } : cls
+        );
+
+        handleClassData(updatedList);
+        store.setSnackbarDetails({
+          status: true,
+          message: response.message || "Class status updated successfully",
+          color: "success",
+          vertical: "top",
+          horizontal: "right"
+        });
+      } else {
+        throw new Error(response.message || "Something went wrong");
+      }
+    } catch (err) {
+      store.setSnackbarDetails({
+        status: true,
+        message: err.message,
+        color: "error",
+        vertical: "top",
+        horizontal: "right"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ThemeProvider>
+      <Head>
+        <title>Dotsquares Wellness - List Classes</title>
+        <meta name="description" content="Dotsquares Wellness - List Classes" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <DashboardLayout>
+        <PageTitle title="Classes Management" subtitle="">
+          <Breadcrumb />
+        </PageTitle>
+        <InnerContent>
+          <Paper elevation={0}>
+            <Heading sx={{ p: 4 }}>
+              <Typography variant="h2">Classes</Typography>
+            </Heading>
+            <Action>
+              <SearchAction>
+                <TextField
+                  id="outlined-basic"
+                  label="Search"
+                  helperText="Search by title, modality, or location"
+                  variant="outlined"
+                  size="small"
+                  className="custom-textfield"
+                  value={searchKeywords}
+                  onChange={({ target }) => setSearchKeywords(target.value)}
+                />
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  onClick={handleSearch}
+                >
+                  Go
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  size="small"
+                  onClick={handleReset}
+                >
+                  Reset
+                </Button>
+              </SearchAction>
+            </Action>
+            <TableWrapper>
+              <TableContainer component={Paper} elevation={0}>
+                <Table sx={{ minWidth: 650 }} aria-label="class table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Action</TableCell>
+                      <TableCell>#</TableCell>
+                      <TableCell>Title</TableCell>
+                      <TableCell>Modality</TableCell>
+                      <TableCell>Location</TableCell>
+                      <TableCell>Date & Time</TableCell>
+                      <TableCell>Duration</TableCell>
+                      <TableCell>Price</TableCell>
+                      <TableCell>Created Date</TableCell>
+                      <TableCell>Approval</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {currentList.length > 0 ? (
+                      currentList.map((cls, index) => (
+                        <TableRow key={cls.id}>
+                          <TableCell width={130}>
+                            <ButtonContainer>
+                              <MuiIconButton
+                                color="cyan"
+                                onClick={() => handleView(cls.id)}
+                                title="View"
+                              >
+                                <RemoveRedEye />
+                              </MuiIconButton>
+                            </ButtonContainer>
+                          </TableCell>
+                          <TableCell>
+                            {(currentPage - 1) * PER_PAGE + index + 1}
+                          </TableCell>
+                          <TableCell>{cls.title}</TableCell>
+                          <TableCell>
+                            {cls.classModalities &&
+                            cls.classModalities.length > 0
+                              ? cls.classModalities
+                                  .map(m => m.modality?.name)
+                                  .join(", ")
+                              : "-"}
+                          </TableCell>
+                          <TableCell>{cls.location || "-"}</TableCell>
+                          <TableCell>
+                            {cls.dateTime
+                              ? new Date(cls.dateTime).toLocaleString("en-US", {
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {cls.durationMins
+                              ? `${cls.durationMins} mins`
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {cls.price ? `$${cls.price}` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {cls.createdAt
+                              ? formatDate("MM-dd-yyyy", cls.createdAt)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={
+                                cls.approvalStatus
+                                  ? cls.approvalStatus.toLowerCase()
+                                  : ""
+                              }
+                              onChange={e =>
+                                updateApprovalAction(e.target.value, cls.id)
+                              }
+                              size="small"
+                              disabled={loading}
+                              displayEmpty
+                            >
+                              <MenuItem value="" disabled>
+                                Select
+                              </MenuItem>
+                              <MenuItem value="pending">Pending</MenuItem>
+                              <MenuItem value="approved">Approved</MenuItem>
+                              <MenuItem value="rejected">Rejected</MenuItem>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={9} align="center">
+                          No Records Found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {currentList.length > 0 && (
+                <StyledTableFooter>
+                  <Typography variant="h6">
+                    Showing {(currentPage - 1) * PER_PAGE + 1}-
+                    {Math.min(currentPage * PER_PAGE, classLists?.length)} of{" "}
+                    {classLists?.length} items
+                  </Typography>
+                  <Pagination
+                    count={Math.ceil(classLists?.length / PER_PAGE)}
+                    page={currentPage}
+                    variant="outlined"
+                    shape="rounded"
+                    onChange={handlePageChange}
+                  />
+                </StyledTableFooter>
+              )}
+            </TableWrapper>
+          </Paper>
+        </InnerContent>
+        {loading && (
+          <Backdrop open={loading} style={{ zIndex: 1000, color: "#fff" }}>
+            <CircularProgress color="inherit" />
+          </Backdrop>
+        )}
+      </DashboardLayout>
+    </ThemeProvider>
+  );
+}
+
+export const getServerSideProps = withAuth(async context => {
+  const session = await getSession(context);
+  const { user } = session;
+
+  const classList = await getPractitionerClassesList(user.token);
+
+  return {
+    props: {
+      classList: classList
+    }
+  };
+});
+
+const Heading = styled.div`
+  ${({ theme }) => `
+    padding: ${theme.spacing(3, 2)};
+    border-bottom: 1px solid ${theme.colors?.palette?.lightGrey || "#eee"};
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    .MuiButtonBase-root {
+      height: 30px;
+    }
+  `}
+`;
+
+const Action = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    justify-content: space-between;
+    padding: ${theme.spacing(3, 4)};
+    border-bottom: 1px solid ${theme.colors?.palette?.lightGrey || "#eee"};
+    flex-direction: column;
+    > .MuiButtonBase-root {
+      white-space: nowrap;
+      .MuiSvgIcon-root {
+        font-size: 20px;
+      }
+    }
+    @media (min-width: ${theme.breakpoints?.values?.sm || 600}px) {
+      flex-direction: row;
+    }
+  `}
+`;
+
+const SearchAction = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    .MuiFormControl-root {
+      width: 100%;
+      .MuiInputBase-root {
+        border-radius: 4px 0 0 4px;
+      }
+      .MuiOutlinedInput-root {
+        .MuiSelect-select {
+          padding-top: 6px;
+          padding-bottom: 6px;
+          height: 24px;
+          font-size: 15px;
+        }
+        .MuiOutlinedInput-notchedOutline {
+          border-radius: 0;
+        }
+      }
+    }
+    .MuiButton-root {
+      min-width: auto;
+      border-radius: 0 4px 4px 0;
+      border-left: 0;
+    }
+    @media (min-width: ${theme.breakpoints?.values?.sm || 600}px) {
+      .MuiFormControl-root {
+        max-width: 220px;
+        &.custom-textfield {
+          width: 140px;
+        }
+      }
+    }
+  `}
+`;
+
+const TableWrapper = styled.div`
+  ${({ theme }) => `
+    padding: ${theme.spacing(3, 4)};
+    .MuiTableRow-root {
+      &:nth-of-type(odd) {
+        background: ${theme.colors?.palette?.lighterGrey || "#fafafa"};
+      }
+    }
+    .MuiFormControl-root {
+      width: auto;
+      .MuiOutlinedInput-notchedOutline {
+        border: 0;
+      }
+      .MuiInputBase-input {
+        padding: 0;
+      }
+    }
+    .MuiTableCell-head {
+      font-weight: 600;
+      background: ${theme.colors?.palette?.white || "#fff"};
+    }
+    .MuiButtonBase-root {
+      margin-right: 5px;
+    }
+    .MuiTableCell-root {
+      color: ${theme.colors?.palette?.darkGrey || "#333"};
+      white-space: nowrap;
+      font-size: 14px;
+      padding: 10px;
+      @media (min-width: ${theme.breakpoints?.values?.sm || 600}px) {
+        font-size: 16px;
+      }
+      @media (min-width: ${theme.breakpoints?.values?.md || 900}px) {
+        font-size: 14px;
+      }
+    }
+  `}
+`;
+
+const StyledTableFooter = styled.div`
+  ${({ theme }) => `
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: ${theme.spacing(3)};
+    .MuiPagination-root {
+      .MuiPagination-ul {
+        li {
+          button {
+            height: 25px;
+            min-width: 25px;
+            font-size: 14px;
+            padding: 8px;
+          }
+        }
+      }
+    }
+  `}
+`;
+
+const ButtonContainer = styled.div`
+  ${() => `    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+`}
+`;

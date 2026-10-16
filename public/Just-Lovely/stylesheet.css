@@ -1,0 +1,48 @@
+@font-face {
+    font-family: 'Just Lovely Slanted';
+    src: url('JustLovelySlanted.eot');
+    src: local('Just Lovely Slanted'), local('JustLovelySlanted'),
+        url('JustLovelySlanted.eot?#iefix') format('embedded-opentype'),
+        url('JustLovelySlanted.woff2') format('woff2'),
+        url('JustLovelySlanted.woff') format('woff'),
+        url('JustLovelySlanted.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Just Lovely Slanted Wide';
+    src: url('JustLovelySlantedWide.eot');
+    src: local('Just Lovely Slanted Wide'), local('JustLovelySlantedWide'),
+        url('JustLovelySlantedWide.eot?#iefix') format('embedded-opentype'),
+        url('JustLovelySlantedWide.woff2') format('woff2'),
+        url('JustLovelySlantedWide.woff') format('woff'),
+        url('JustLovelySlantedWide.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Just Lovely Extras';
+    src: url('JustLovelyExtras.eot');
+    src: local('Just Lovely Extras'), local('JustLovelyExtras'),
+        url('JustLovelyExtras.eot?#iefix') format('embedded-opentype'),
+        url('JustLovelyExtras.woff2') format('woff2'),
+        url('JustLovelyExtras.woff') format('woff'),
+        url('JustLovelyExtras.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Just Lovely';
+    src: url('JustLovely.eot');
+    src: local('Just Lovely'), local('JustLovely'),
+        url('JustLovely.eot?#iefix') format('embedded-opentype'),
+        url('JustLovely.woff2') format('woff2'),
+        url('JustLovely.woff') format('woff'),
+        url('JustLovely.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
